@@ -1,6 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body {
-  font-family: Inter, ui-sans-serif, system-ui;
+
+/* Custom theme colors */
+:root {
+  --primary-blue: #2563eb;
+  --primary-gray: #f3f4f6;
+  --dark-gray: #1e293b;
+  --text-gray: #64748b;
 }

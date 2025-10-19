@@ -1,18 +1,12 @@
-// backend/src/models/Patient.js
+// Patient model definition using mongoose
 import mongoose from "mongoose";
 
-const patientSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    cardUID: { type: String, required: true, unique: true },
-    age: Number,
-    gender: String,
-    address: String,
-    contact: String,
-    registeredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  },
-  { timestamps: true }
-);
+const patientSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  fullName: String,
+  dob: Date,
+  gender: { type: String, enum: ["male", "female"] },
+  contact: String,
+});
 
-const Patient = mongoose.model("Patient", patientSchema);
-export default Patient;
+export default mongoose.model("Patient", patientSchema);

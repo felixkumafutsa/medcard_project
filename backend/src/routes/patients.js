@@ -1,44 +1,65 @@
+// Patients routes
 import express from "express";
 import Patient from "../models/Patient.js";
-import { verifyToken } from "../middleware/auth.js";
+import Card from "../models/Card.js";
+import { verifyToken, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// GET /api/patients — return all patients
-router.get("/", verifyToken, async (req, res) => {
+// ✅ Create patient (Admin or Doctor)
+router.post("/", verifyToken, authorizeRoles("admin", "doctor"), async (req, res) => {
   try {
-    const patients = await Patient.find().populate("registeredBy", "name email role");
-    res.json(patients);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    const { user, fullName, dob, gender, contact } = req.body;
+    const patient = await Patient.create({ user, fullName, dob, gender, contact });
+    res.status(201).json(patient);
+  } catch (error) {
+    res.status(500).json({ message: "Error creating patient", error });
   }
 });
 
-// POST /api/patients/register — register new patient
-router.post("/register", verifyToken, async (req, res) => {
+// ✅ Get all patients (Admin and Doctors only)
+router.get("/", verifyToken, authorizeRoles("admin", "doctor"), async (req, res) => {
   try {
-    const { fullName, dob, gender, email, phone, cardUID } = req.body;
+    const patients = await Patient.find().populate("user", "username role");
+    res.json(patients);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching patients", error });
+  }
+});
 
-    // Check if cardUID already exists
-    const exists = await Patient.findOne({ cardUID });
-    if (exists) return res.status(400).json({ message: "Card already registered" });
+// ✅ Get a single patient (Self, Admin, or Doctor)
+router.get("/:id", verifyToken, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id)
+      .populate("user", "username role")
+      .populate("card");
 
-    const patient = new Patient({
-      fullName,
-      dob,
-      gender,
-      email,
-      phone,
-      cardUID,
-      registeredBy: req.user.id
-    });
+    if (!patient) return res.status(404).json({ message: "Patient not found" });
 
-    await patient.save();
-    res.status(201).json(patient);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    if (req.user.role === "patient" && req.user._id.toString() !== patient.user._id.toString()) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    res.json(patient);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching patient", error });
+  }
+});
+
+// ✅ Update patient info (Self, Admin, or Doctor)
+router.put("/:id", verifyToken, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id);
+    if (!patient) return res.status(404).json({ message: "Patient not found" });
+
+    if (req.user.role === "patient" && req.user._id.toString() !== patient.user.toString()) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const updated = await Patient.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating patient", error });
   }
 });
 
